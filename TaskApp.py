@@ -357,6 +357,7 @@ class TaskManager(QMainWindow):
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(6)
             self.task_table.setHorizontalHeaderLabels(['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
+            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
