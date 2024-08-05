@@ -141,13 +141,14 @@ class TaskManager(QMainWindow):
         self.calendar_layout.addLayout(self.nav_layout)
 
         # Calendar Table
-        self.calendar_table = QTableWidget(5, 7)
-        self.calendar_table.setHorizontalHeaderLabels(['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'])
+        self.calendar_table = QTableWidget(6, 7)
+        self.calendar_table.setHorizontalHeaderLabels(['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'])
         self.calendar_table.horizontalHeader().setStretchLastSection(True)
         self.calendar_table.verticalHeader().setVisible(False)
         self.calendar_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.calendar_table.setSelectionMode(QTableWidget.NoSelection)
         self.calendar_layout.addWidget(self.calendar_table)
+
 
         self.prev_month_button.clicked.connect(self.show_prev_month)
         self.next_month_button.clicked.connect(self.show_next_month)
