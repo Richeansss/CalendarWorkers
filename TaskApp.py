@@ -1,9 +1,11 @@
 import sys
 import sqlite3
+from datetime import datetime
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QListWidget,
     QFormLayout, QLineEdit, QLabel, QTabWidget, QComboBox, QDateEdit, QTextBrowser, QHeaderView, QHBoxLayout,
-    QTableWidgetItem, QTableWidget
+    QTableWidgetItem, QTableWidget, QMessageBox
 )
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QPixmap, QPainter, QColor
@@ -337,6 +339,7 @@ class TaskManager(QMainWindow):
             print(f"Ошибка при загрузки таблицы Работники: {e}")
             return []
 
+
     def load_tasks(self):
         try:
             conn = sqlite3.connect('tasks.db')
@@ -353,12 +356,18 @@ class TaskManager(QMainWindow):
             self.task_table.clear()
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(6)
-            self.task_table.setHorizontalHeaderLabels(['ID', 'Worker', 'Title', 'Start Date', 'End Date', 'Status'])
+            self.task_table.setHorizontalHeaderLabels(['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
             for row_index, task in enumerate(tasks):
                 for col_index, data in enumerate(task):
+                    if col_index == 3 or col_index == 4:  # Даты
+                        if isinstance(data, str):  # Если дата представлена в виде строки
+                            try:
+                                data = datetime.strptime(data, '%Y-%m-%d').strftime('%d.%m.%Y')
+                            except ValueError:
+                                data = 'Invalid Date'  # Если формат даты некорректный
                     if col_index == 5:  # Столбец статуса
                         combo_box = QComboBox()
                         combo_box.addItems(status_items)
@@ -374,8 +383,7 @@ class TaskManager(QMainWindow):
 
             self.task_table.resizeColumnsToContents()
         except Exception as e:
-            print(f"Ошибка при загрузке задач: {e}")
-
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
 
     def update_task_status(self, row, new_status):
         try:
