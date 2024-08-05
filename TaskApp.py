@@ -123,6 +123,18 @@ class TaskManager(QMainWindow):
         self.remove_task_button.clicked.connect(self.remove_task)
         self.add_worker_button.clicked.connect(self.add_worker_combobox)
 
+        # Load initial worker data
+        self.add_initial_worker_combobox()
+
+    def add_initial_worker_combobox(self):
+        """Добавляет комбобокс с одним работником при инициализации."""
+        workers = self.load_workers()
+        if workers:
+            initial_worker = QComboBox()
+            initial_worker.addItems([w[1] for w in workers])
+            self.task_worker_layout.insertWidget(0, initial_worker)  # Добавляем в начало layout
+
+
     def add_worker_combobox(self):
         new_combobox = QComboBox()
         workers = self.load_workers()
