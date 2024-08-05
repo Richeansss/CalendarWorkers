@@ -92,7 +92,9 @@ class TaskManager(QMainWindow):
 
         self.task_worker_layout = QVBoxLayout()  # Новый layout для комбобоксов работников
         self.add_worker_button = QPushButton('Добавить работника')
+        self.remove_worker_button = QPushButton('Удалить работника')
         self.task_worker_layout.addWidget(self.add_worker_button)
+        self.task_worker_layout.addWidget(self.remove_worker_button)
 
         self.task_title_input = QLineEdit()
         self.task_start_input = QDateEdit()
@@ -122,24 +124,43 @@ class TaskManager(QMainWindow):
         self.add_task_button.clicked.connect(self.add_task)
         self.remove_task_button.clicked.connect(self.remove_task)
         self.add_worker_button.clicked.connect(self.add_worker_combobox)
+        self.remove_worker_button.clicked.connect(self.remove_worker_combobox)
 
         # Load initial worker data
         self.add_initial_worker_combobox()
 
+    def add_worker_combobox(self):
+        workers = self.load_workers()
+        if workers:
+            new_combobox = QComboBox()
+            new_combobox.addItems([w[1] for w in workers])
+            self.task_worker_layout.insertWidget(self.task_worker_layout.count() - 2, new_combobox)  # Добавляем перед кнопкой удаления
+
+
     def add_initial_worker_combobox(self):
-        """Добавляет комбобокс с одним работником при инициализации."""
         workers = self.load_workers()
         if workers:
             initial_worker = QComboBox()
             initial_worker.addItems([w[1] for w in workers])
             self.task_worker_layout.insertWidget(0, initial_worker)  # Добавляем в начало layout
 
+    def remove_worker_combobox(self):
+        # Получаем все комбобоксы в layout
+        widgets = []
+        count = self.task_worker_layout.count()
 
-    def add_worker_combobox(self):
-        new_combobox = QComboBox()
-        workers = self.load_workers()
-        new_combobox.addItems([w[1] for w in workers])
-        self.task_worker_layout.insertWidget(self.task_worker_layout.count() - 1, new_combobox)  # Добавляем перед кнопкой
+        for i in range(count):
+            item = self.task_worker_layout.itemAt(i)
+            if item and isinstance(item.widget(), QComboBox):
+                widgets.append(item.widget())
+
+        # Удаляем все комбобоксы, кроме первого
+        if len(widgets) > 1:
+            for widget in widgets[1:]:  # Удаляем все кроме первого
+                self.task_worker_layout.removeWidget(widget)
+                widget.deleteLater()  # Освобождаем память
+        else:
+            print("Не могу удалить, поскольку должен оставаться хотя бы один комбобокс.")
 
     def setup_calendar_tab(self):
         self.calendar_layout = QVBoxLayout()
@@ -204,7 +225,7 @@ class TaskManager(QMainWindow):
             self.load_workers()
         elif current_index == 1:  # Tasks tab
             workers = self.load_workers()  # Update worker combo boxes
-            for i in range(self.task_worker_layout.count() - 1):  # Обновляем все комбобоксы, кроме кнопки
+            for i in range(self.task_worker_layout.count() - 2):  # Обновляем все комбобоксы, кроме кнопки и кнопки удаления
                 combo = self.task_worker_layout.itemAt(i).widget()
                 if isinstance(combo, QComboBox):
                     combo.clear()
@@ -266,7 +287,7 @@ class TaskManager(QMainWindow):
                     task_id = cursor.lastrowid
 
                     # Получаем все комбобоксы работников
-                    comboboxes = [self.task_worker_layout.itemAt(i).widget() for i in range(self.task_worker_layout.count() - 1)]
+                    comboboxes = [self.task_worker_layout.itemAt(i).widget() for i in range(self.task_worker_layout.count() - 2)]
                     for combo in comboboxes:
                         worker_name = combo.currentText()
                         workers = self.load_workers()
