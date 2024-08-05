@@ -325,7 +325,6 @@ class TaskManager(QMainWindow):
         except Exception as e:
             print(f"Ошибка при загрузке задач: {e}")
 
-
     def update_task_status(self, row, new_status):
         try:
             task_id = self.task_table.item(row, 0).data(Qt.UserRole)
