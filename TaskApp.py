@@ -575,4 +575,3 @@ if __name__ == '__main__':
     window = TaskManager()
     window.show()
     sys.exit(app.exec_())
-
