@@ -8,17 +8,20 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem, QTableWidget, QMessageBox
 )
 from PyQt5.QtCore import QDate, Qt
-from PyQt5.QtGui import QPixmap, QPainter, QColor
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QIcon
 
 TASK_DONE = "green"
 TASK_PROCESSING = "blue"
 TASK_STOP = "red"
+
 
 class TaskManager(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Менеджер задач')
         self.setGeometry(100, 100, 1000, 800)
+
+        self.setWindowIcon(QIcon('gaz.ico'))
 
         # Общий стиль для всех QPushButton
         self.setStyleSheet("""
@@ -139,8 +142,8 @@ class TaskManager(QMainWindow):
         if workers:
             new_combobox = QComboBox()
             new_combobox.addItems([w[1] for w in workers])
-            self.task_worker_layout.insertWidget(self.task_worker_layout.count() - 2, new_combobox)  # Добавляем перед кнопкой удаления
-
+            self.task_worker_layout.insertWidget(self.task_worker_layout.count() - 2,
+                                                 new_combobox)  # Добавляем перед кнопкой удаления
 
     def add_initial_worker_combobox(self):
         workers = self.load_workers()
@@ -250,7 +253,8 @@ class TaskManager(QMainWindow):
             self.load_workers()
         elif current_index == 1:  # Tasks tab
             workers = self.load_workers()  # Update worker combo boxes
-            for i in range(self.task_worker_layout.count() - 2):  # Обновляем все комбобоксы, кроме кнопки и кнопки удаления
+            for i in range(
+                    self.task_worker_layout.count() - 2):  # Обновляем все комбобоксы, кроме кнопки и кнопки удаления
                 combo = self.task_worker_layout.itemAt(i).widget()
                 if isinstance(combo, QComboBox):
                     combo.clear()
@@ -312,7 +316,8 @@ class TaskManager(QMainWindow):
                     task_id = cursor.lastrowid
 
                     # Получаем все комбобоксы работников
-                    comboboxes = [self.task_worker_layout.itemAt(i).widget() for i in range(self.task_worker_layout.count() - 2)]
+                    comboboxes = [self.task_worker_layout.itemAt(i).widget() for i in
+                                  range(self.task_worker_layout.count() - 2)]
                     for combo in comboboxes:
                         worker_name = combo.currentText()
                         workers = self.load_workers()
