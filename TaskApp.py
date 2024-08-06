@@ -1,5 +1,9 @@
 import sys
 import sqlite3
+import time
+from datetime import datetime
+import shutil
+import os
 from datetime import datetime
 
 from PyQt5.QtWidgets import (
@@ -525,8 +529,52 @@ def get_status_color_dot(status):
     return f'<span style="color:{color};">&#9679;</span>'
 
 
+def backup_tasks_db():
+    db_path = 'tasks.db'
+
+    # Определите формат для папки резервных копий
+    backup_folder_name = datetime.now().strftime("backup_%d_%m_%Y")
+    backup_folder = os.path.join('backups', backup_folder_name)
+    os.makedirs(backup_folder, exist_ok=True)  # Создаем папку для резервных копий, если её нет
+
+    # Определите путь для резервной копии
+    backup_path = os.path.join(backup_folder, f'tasks_backup_{datetime.now().strftime("%H%M%S")}.db')
+
+    # Проверьте, существует ли уже резервная копия
+    if not any(fname.startswith('tasks_backup_') for fname in os.listdir(backup_folder)):
+        try:
+            shutil.copy(db_path, backup_path)
+            print(f'Резервная копия создана: {backup_path}')
+        except Exception as e:
+            print(f'Ошибка при создании резервной копии: {e}')
+    else:
+        print("Резервная копия для сегодня уже существует.")
+
+
+def is_even_day():
+    day = datetime.now().day
+    return day % 2 == 0
+
+
+def has_backup_been_made():
+    day = datetime.now().day
+    backup_folder = f'backup_{day}'
+    return os.path.exists(backup_folder) and len(os.listdir(backup_folder)) > 0
+
+
+def perform_daily_backup():
+    if is_even_day() and not has_backup_been_made():
+        backup_tasks_db()
+
+
+def main():
+    perform_daily_backup()
+
+
 if __name__ == '__main__':
+    main()
     app = QApplication(sys.argv)
     window = TaskManager()
     window.show()
     sys.exit(app.exec_())
+
