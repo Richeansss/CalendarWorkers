@@ -1,7 +1,5 @@
 import sys
 import sqlite3
-import time
-from datetime import datetime
 import shutil
 import os
 from datetime import datetime

@@ -1,4 +1,5 @@
 tasks.db
+backups/
 
 .idea/misc.xml
 .idea/WorkersCalendar.iml
