@@ -341,7 +341,7 @@ class TaskManager(QMainWindow):
         selected_items = self.task_table.selectedItems()
         if selected_items:
             selected_row = selected_items[0].row()
-            task_id = self.task_table.item(selected_row, 0).text()
+            task_id = self.task_table.item(selected_row, 0).data(Qt.UserRole)
             try:
                 with sqlite3.connect('tasks.db') as conn:
                     cursor = conn.cursor()
