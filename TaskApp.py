@@ -551,7 +551,7 @@ def backup_tasks_db():
 
 def is_even_day():
     day = datetime.now().day
-    return day % 2 == 0
+    return day
 
 
 def has_backup_been_made():
@@ -575,4 +575,3 @@ if __name__ == '__main__':
     window = TaskManager()
     window.show()
     sys.exit(app.exec_())
-
