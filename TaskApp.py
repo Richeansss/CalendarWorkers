@@ -10,6 +10,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QPixmap, QPainter, QColor
 
+TASK_DONE = "green"
+TASK_PROCESSING = "blue"
+TASK_STOP = "red"
 
 class TaskManager(QMainWindow):
     def __init__(self):
@@ -239,7 +242,7 @@ class TaskManager(QMainWindow):
         self.task_end_input.setCalendarPopup(True)
         self.task_end_input.setDate(QDate.currentDate())
 
-        self.task_status_input.addItems(['В процессе', 'Завершена', 'Остановлена'])
+        self.task_status_input.addItems(['В процессе', 'Выполнено', 'Приостановлена'])
 
     def update_data(self):
         current_index = self.tabs.currentIndex()
@@ -379,7 +382,7 @@ class TaskManager(QMainWindow):
                 ['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
             self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-            status_items = ['В процессе', 'Завершена', 'Остановлена']
+            status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
             for row_index, task in enumerate(tasks):
                 for col_index, data in enumerate(task):
@@ -454,9 +457,9 @@ class TaskManager(QMainWindow):
 
             if tasks:
                 status_color = {
-                    "Выполнено": "green",
-                    "Приостановлена": "yellow",
-                    "В процессе": "blue"
+                    "Выполнено": TASK_DONE,
+                    "Приостановлена": TASK_STOP,
+                    "В процессе": TASK_PROCESSING
                 }.get(tasks[0][5], "black")
                 text_browser.setTextColor(QColor(status_color))
 
@@ -504,9 +507,9 @@ def create_color_dot_pixmap(color, size=10):
 
 def get_status_color_dot(status):
     color_map = {
-        "Выполнено": "green",
-        "Приостановлена": "yellow",
-        "В процессе": "blue"  # Придуманный статус для "в процессе"
+        "Выполнено": TASK_DONE,
+        "Приостановлена": TASK_STOP,
+        "В процессе": TASK_PROCESSING  # Придуманный статус для "в процессе"
     }
     color = color_map.get(status, "gray")  # По умолчанию - серый цвет
     return f'<span style="color:{color};">&#9679;</span>'
