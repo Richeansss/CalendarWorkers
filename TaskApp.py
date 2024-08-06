@@ -98,9 +98,9 @@ class TaskManager(QMainWindow):
 
         self.task_form = QFormLayout()
 
-        self.task_worker_layout = QVBoxLayout()  # Новый layout для комбобоксов работников
+        self.task_worker_layout = QHBoxLayout()  # Новый layout для комбобоксов работников
         self.add_worker_button = QPushButton('Добавить работника')
-        self.remove_worker_button = QPushButton('Удалить работника')
+        self.remove_worker_button = QPushButton('Удалить работников')
         self.task_worker_layout.addWidget(self.add_worker_button)
         self.task_worker_layout.addWidget(self.remove_worker_button)
 
