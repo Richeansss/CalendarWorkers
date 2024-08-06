@@ -1,9 +1,11 @@
 import sys
 import sqlite3
+from datetime import datetime
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QListWidget,
     QFormLayout, QLineEdit, QLabel, QTabWidget, QComboBox, QDateEdit, QTextBrowser, QHeaderView, QHBoxLayout,
-    QTableWidgetItem, QTableWidget
+    QTableWidgetItem, QTableWidget, QMessageBox
 )
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QPixmap, QPainter, QColor
@@ -89,19 +91,31 @@ class TaskManager(QMainWindow):
         self.task_layout.addWidget(self.task_table)
 
         self.task_form = QFormLayout()
-        self.task_worker_input = QComboBox()
+
+        self.task_worker_layout = QVBoxLayout()  # Новый layout для комбобоксов работников
+        self.add_worker_button = QPushButton('Добавить работника')
+        self.remove_worker_button = QPushButton('Удалить работника')
+        self.task_worker_layout.addWidget(self.add_worker_button)
+        self.task_worker_layout.addWidget(self.remove_worker_button)
+
         self.task_title_input = QLineEdit()
         self.task_start_input = QDateEdit()
         self.task_end_input = QDateEdit()
         self.task_status_input = QComboBox()
 
-        self.initialize_task_form()
+        self.initialize_task_form()  # Инициализация виджетов
 
         self.task_buttons_layout = QVBoxLayout()
         self.add_task_button = QPushButton('Добавить задачу')
         self.remove_task_button = QPushButton('Удалить задачу')
         self.task_buttons_layout.addWidget(self.add_task_button)
         self.task_buttons_layout.addWidget(self.remove_task_button)
+
+        self.task_form.addRow(QLabel('Рабочие:'), self.task_worker_layout)
+        self.task_form.addRow(QLabel('Название задачи:'), self.task_title_input)
+        self.task_form.addRow(QLabel('Дата начала:'), self.task_start_input)
+        self.task_form.addRow(QLabel('Дата конца:'), self.task_end_input)
+        self.task_form.addRow(QLabel('Статус:'), self.task_status_input)
 
         self.task_layout.addLayout(self.task_form)
         self.task_layout.addLayout(self.task_buttons_layout)
@@ -111,6 +125,44 @@ class TaskManager(QMainWindow):
         # Connect buttons to methods
         self.add_task_button.clicked.connect(self.add_task)
         self.remove_task_button.clicked.connect(self.remove_task)
+        self.add_worker_button.clicked.connect(self.add_worker_combobox)
+        self.remove_worker_button.clicked.connect(self.remove_worker_combobox)
+
+        # Load initial worker data
+        self.add_initial_worker_combobox()
+
+    def add_worker_combobox(self):
+        workers = self.load_workers()
+        if workers:
+            new_combobox = QComboBox()
+            new_combobox.addItems([w[1] for w in workers])
+            self.task_worker_layout.insertWidget(self.task_worker_layout.count() - 2, new_combobox)  # Добавляем перед кнопкой удаления
+
+
+    def add_initial_worker_combobox(self):
+        workers = self.load_workers()
+        if workers:
+            initial_worker = QComboBox()
+            initial_worker.addItems([w[1] for w in workers])
+            self.task_worker_layout.insertWidget(0, initial_worker)  # Добавляем в начало layout
+
+    def remove_worker_combobox(self):
+        # Получаем все комбобоксы в layout
+        widgets = []
+        count = self.task_worker_layout.count()
+
+        for i in range(count):
+            item = self.task_worker_layout.itemAt(i)
+            if item and isinstance(item.widget(), QComboBox):
+                widgets.append(item.widget())
+
+        # Удаляем все комбобоксы, кроме первого
+        if len(widgets) > 1:
+            for widget in widgets[1:]:  # Удаляем все кроме первого
+                self.task_worker_layout.removeWidget(widget)
+                widget.deleteLater()  # Освобождаем память
+        else:
+            print("Не могу удалить, поскольку должен оставаться хотя бы один комбобокс.")
 
     def setup_calendar_tab(self):
         self.calendar_layout = QVBoxLayout()
@@ -169,20 +221,17 @@ class TaskManager(QMainWindow):
 
         self.task_status_input.addItems(['В процессе', 'Завершена', 'Остановлена'])
 
-        self.task_form.addRow(QLabel('Рабочий:'), self.task_worker_input)
-        self.task_form.addRow(QLabel('Название задачи:'), self.task_title_input)
-        self.task_form.addRow(QLabel('Дата начала:'), self.task_start_input)
-        self.task_form.addRow(QLabel('Дата конца:'), self.task_end_input)
-        self.task_form.addRow(QLabel('Статус:'), self.task_status_input)
-
     def update_data(self):
         current_index = self.tabs.currentIndex()
         if current_index == 0:  # Workers tab
             self.load_workers()
         elif current_index == 1:  # Tasks tab
-            workers = self.load_workers()  # Update worker combo box
-            self.task_worker_input.clear()
-            self.task_worker_input.addItems([w[1] for w in workers])
+            workers = self.load_workers()  # Update worker combo boxes
+            for i in range(self.task_worker_layout.count() - 2):  # Обновляем все комбобоксы, кроме кнопки и кнопки удаления
+                combo = self.task_worker_layout.itemAt(i).widget()
+                if isinstance(combo, QComboBox):
+                    combo.clear()
+                    combo.addItems([w[1] for w in workers])
             self.load_tasks()
         elif current_index == 2:  # Calendar tab
             self.show_month(self.current_date.year(), self.current_date.month())
@@ -223,16 +272,12 @@ class TaskManager(QMainWindow):
             print("Работник не выбран.")
 
     def add_task(self):
-        worker_name = self.task_worker_input.currentText()
         title = self.task_title_input.text().strip()
         start_date = self.task_start_input.date().toString('yyyy-MM-dd')
         end_date = self.task_end_input.date().toString('yyyy-MM-dd')
         status = self.task_status_input.currentText()
 
-        workers = self.load_workers()
-        worker_id = next((w[0] for w in workers if w[1] == worker_name), None)
-
-        if title and worker_id:
+        if title:
             try:
                 with sqlite3.connect('tasks.db') as conn:
                     cursor = conn.cursor()
@@ -243,19 +288,26 @@ class TaskManager(QMainWindow):
                     )
                     task_id = cursor.lastrowid
 
-                    # Связываем задачу с работником
-                    cursor.execute(
-                        'INSERT INTO task_workers (task_id, worker_id) VALUES (?, ?)',
-                        (task_id, worker_id)
-                    )
+                    # Получаем все комбобоксы работников
+                    comboboxes = [self.task_worker_layout.itemAt(i).widget() for i in range(self.task_worker_layout.count() - 2)]
+                    for combo in comboboxes:
+                        worker_name = combo.currentText()
+                        workers = self.load_workers()
+                        worker_id = next((w[0] for w in workers if w[1] == worker_name), None)
+                        if worker_id:
+                            # Связываем задачу с работником
+                            cursor.execute(
+                                'INSERT INTO task_workers (task_id, worker_id) VALUES (?, ?)',
+                                (task_id, worker_id)
+                            )
                     conn.commit()
                 self.task_title_input.clear()
                 self.task_status_input.setCurrentIndex(0)
                 self.update_data()
             except Exception as e:
-                print(f"Ошибка при добавлении задачи: {e}")
+                QMessageBox.critical(self, "Ошибка", f"Ошибка при добавлении задачи: {e}")
         else:
-            print("Работник не выбран.")
+            QMessageBox.warning(self, "Ошибка", "Название задачи не заполнено.")
 
     def remove_task(self):
         selected_items = self.task_table.selectedItems()
@@ -287,15 +339,16 @@ class TaskManager(QMainWindow):
             print(f"Ошибка при загрузки таблицы Работники: {e}")
             return []
 
+
     def load_tasks(self):
         try:
             conn = sqlite3.connect('tasks.db')
             cursor = conn.cursor()
             cursor.execute('''
-            SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
-            FROM tasks
-            JOIN task_workers ON tasks.id = task_workers.task_id
-            JOIN workers ON task_workers.worker_id = workers.id
+        SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
+        FROM tasks
+        JOIN task_workers ON tasks.id = task_workers.task_id
+        JOIN workers ON task_workers.worker_id = workers.id
         ''')
             tasks = cursor.fetchall()
             conn.close()
@@ -303,12 +356,19 @@ class TaskManager(QMainWindow):
             self.task_table.clear()
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(6)
-            self.task_table.setHorizontalHeaderLabels(['ID', 'Worker', 'Title', 'Start Date', 'End Date', 'Status'])
+            self.task_table.setHorizontalHeaderLabels(['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
+            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
             for row_index, task in enumerate(tasks):
                 for col_index, data in enumerate(task):
+                    if col_index == 3 or col_index == 4:  # Даты
+                        if isinstance(data, str):  # Если дата представлена в виде строки
+                            try:
+                                data = datetime.strptime(data, '%Y-%m-%d').strftime('%d.%m.%Y')
+                            except ValueError:
+                                data = 'Invalid Date'  # Если формат даты некорректный
                     if col_index == 5:  # Столбец статуса
                         combo_box = QComboBox()
                         combo_box.addItems(status_items)
@@ -324,7 +384,7 @@ class TaskManager(QMainWindow):
 
             self.task_table.resizeColumnsToContents()
         except Exception as e:
-            print(f"Ошибка при загрузке задач: {e}")
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
 
     def update_task_status(self, row, new_status):
         try:
