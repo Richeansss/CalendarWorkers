@@ -377,15 +377,15 @@ class TaskManager(QMainWindow):
 
             self.task_table.clearContents()
             self.task_table.setRowCount(len(tasks))
-            self.task_table.setColumnCount(6)
-            self.task_table.setHorizontalHeaderLabels(
-                ['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
+            self.task_table.setColumnCount(5)  # Убираем колонку ID
+            self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
             self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
             for row_index, task in enumerate(tasks):
-                for col_index, data in enumerate(task):
+                for col_index in range(1, 6):  # Пропускаем колонку ID
+                    data = task[col_index]
                     if col_index == 3 or col_index == 4:  # Даты
                         if isinstance(data, str):  # Если дата представлена в виде строки
                             try:
@@ -398,15 +398,14 @@ class TaskManager(QMainWindow):
                         combo_box.setCurrentText(data)
                         combo_box.currentIndexChanged.connect(
                             lambda index, row=row_index: self.update_task_status(row, status_items[index]))
-                        self.task_table.setCellWidget(row_index, col_index, combo_box)
+                        self.task_table.setCellWidget(row_index, col_index - 1, combo_box)
                     else:
                         item = QTableWidgetItem(str(data))
-                        if col_index == 0:
+                        if col_index == 1:  # Связываем скрытый ID с первой видимой колонкой (Работник)
                             item.setData(Qt.UserRole, task[0])
-                        self.task_table.setItem(row_index, col_index, item)
+                        self.task_table.setItem(row_index, col_index - 1, item)
 
             self.task_table.resizeColumnsToContents()
-            self.task_table.update()
             self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
@@ -452,8 +451,14 @@ class TaskManager(QMainWindow):
 
             text_browser = QTextBrowser()
             text_browser.setHtml(html_task_details)
-            self.calendar_table.setCellWidget((i + first_day_of_month - 1) // 7, (i + first_day_of_month - 1) % 7,
-                                              text_browser)
+
+            row = (i + first_day_of_month - 1) // 7
+            column = (i + first_day_of_month - 1) % 7
+            self.calendar_table.setCellWidget(row, column, text_browser)
+
+            # Change background color for Saturday and Sunday
+            if column == 5 or column == 6:
+                text_browser.setStyleSheet("background-color: lightgrey;")
 
             if tasks:
                 status_color = {
