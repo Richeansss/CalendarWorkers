@@ -167,6 +167,18 @@ class TaskManager(QMainWindow):
     def setup_calendar_tab(self):
         self.calendar_layout = QVBoxLayout()
 
+        # Worker selection combobox
+        self.worker_filter_layout = QHBoxLayout()
+        self.worker_filter_label = QLabel('Сортировать по работнику:')
+        self.worker_filter_combobox = QComboBox()
+        self.worker_filter_combobox.addItem('Все работники')
+        self.worker_filter_combobox.currentIndexChanged.connect(self.filter_tasks_by_worker)
+
+        self.worker_filter_layout.addWidget(self.worker_filter_label)
+        self.worker_filter_layout.addWidget(self.worker_filter_combobox)
+
+        self.calendar_layout.addLayout(self.worker_filter_layout)
+
         # Navigation Layout
         self.nav_layout = QHBoxLayout()
 
@@ -175,21 +187,19 @@ class TaskManager(QMainWindow):
 
         # Month and Year Label
         self.month_year_label = QLabel()
-        self.month_year_label.setAlignment(Qt.AlignCenter)  # Выравнивание по центру
+        self.month_year_label.setAlignment(Qt.AlignCenter)
         self.month_year_label.setStyleSheet("""
             font-weight: bold;
             text-transform: uppercase;
-            font-size: 18px; /* Размер шрифта */
-            color: #333; /* Цвет текста */
-            margin: 0 10px; /* Отступы по бокам */
+            font-size: 18px;
+            color: #333;
+            margin: 0 10px;
         """)
 
-        # Add buttons and label to the navigation layout
         self.nav_layout.addWidget(self.prev_month_button)
         self.nav_layout.addWidget(self.month_year_label)
         self.nav_layout.addWidget(self.next_month_button)
 
-        # Add navigation layout to main layout
         self.calendar_layout.addLayout(self.nav_layout)
 
         # Calendar Table
@@ -201,7 +211,6 @@ class TaskManager(QMainWindow):
         self.calendar_table.setSelectionMode(QTableWidget.NoSelection)
         self.calendar_layout.addWidget(self.calendar_table)
 
-
         self.prev_month_button.clicked.connect(self.show_prev_month)
         self.next_month_button.clicked.connect(self.show_next_month)
 
@@ -209,6 +218,17 @@ class TaskManager(QMainWindow):
         self.show_month(self.current_date.year(), self.current_date.month())
 
         self.calendar_tab.setLayout(self.calendar_layout)
+
+        # Load initial worker data into combobox
+        self.load_worker_filter()
+
+    def load_worker_filter(self):
+        workers = self.load_workers()
+        for worker in workers:
+            self.worker_filter_combobox.addItem(worker[1])
+
+    def filter_tasks_by_worker(self):
+        self.show_month(self.current_date.year(), self.current_date.month())
 
     def initialize_task_form(self):
         self.task_start_input.setDisplayFormat('dd.MM.yyyy')
@@ -339,27 +359,27 @@ class TaskManager(QMainWindow):
             print(f"Ошибка при загрузки таблицы Работники: {e}")
             return []
 
-
     def load_tasks(self):
         try:
             conn = sqlite3.connect('tasks.db')
             cursor = conn.cursor()
             cursor.execute('''
-        SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
-        FROM tasks
-        JOIN task_workers ON tasks.id = task_workers.task_id
-        JOIN workers ON task_workers.worker_id = workers.id
-        ''')
+                SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
+                FROM tasks
+                JOIN task_workers ON tasks.id = task_workers.task_id
+                JOIN workers ON task_workers.worker_id = workers.id
+            ''')
             tasks = cursor.fetchall()
             conn.close()
 
-            self.task_table.clear()
+            self.task_table.clearContents()
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(6)
-            self.task_table.setHorizontalHeaderLabels(['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
+            self.task_table.setHorizontalHeaderLabels(
+                ['ID', 'Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
             self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-            status_items = ['В процессе', 'Выполнено', 'Приостановлена']
+            status_items = ['В процессе', 'Завершена', 'Остановлена']
 
             for row_index, task in enumerate(tasks):
                 for col_index, data in enumerate(task):
@@ -383,8 +403,14 @@ class TaskManager(QMainWindow):
                         self.task_table.setItem(row_index, col_index, item)
 
             self.task_table.resizeColumnsToContents()
+            self.task_table.update()
+            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.task_table.resizeColumnsToContents()
 
     def update_task_status(self, row, new_status):
         try:
@@ -403,40 +429,37 @@ class TaskManager(QMainWindow):
         first_day_of_month = self.current_date.dayOfWeek() - 1  # Monday = 0, Sunday = 6
         self.calendar_table.clearContents()
 
-        # Update the month and year label
         self.month_year_label.setText(self.current_date.toString('MMMM yyyy'))
 
-        # Fill the calendar with days and tasks
+        selected_worker = self.worker_filter_combobox.currentText()
         for i in range(1, days_in_month + 1):
             day_date = QDate(year, month, i)
             tasks = self.get_tasks_for_date(day_date.toString('yyyy-MM-dd'))
 
-            # Create a string with date and tasks
-            html_task_details = f"{i}<br>"  # Start with the day number and add HTML markup for a new line
+            if selected_worker != 'Все работники':
+                tasks = [task for task in tasks if task[1] == selected_worker]
+
+            html_task_details = f"{i}<br>"
             if tasks:
                 task_details = "<br>".join([
                     f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
                     for task in tasks
-                ])  # Added worker name and colored dot
+                ])
+                html_task_details += task_details
 
-                html_task_details += task_details  # Add tasks to the string
-
-            # Create and set the widget
             text_browser = QTextBrowser()
             text_browser.setHtml(html_task_details)
             self.calendar_table.setCellWidget((i + first_day_of_month - 1) // 7, (i + first_day_of_month - 1) % 7,
                                               text_browser)
 
-            # Change text color based on the status of the first task
             if tasks:
                 status_color = {
-                    "выполнено": "green",
-                    "приостановлена": "yellow",
-                    "в процессе": "blue"
-                }.get(tasks[0][5], "black")  # Default to black color
+                    "Выполнено": "green",
+                    "Приостановлена": "yellow",
+                    "В процессе": "blue"
+                }.get(tasks[0][5], "black")
                 text_browser.setTextColor(QColor(status_color))
 
-        # Set table header sizes
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.resizeRowsToContents()
