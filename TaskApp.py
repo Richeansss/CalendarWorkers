@@ -305,9 +305,9 @@ class TaskManager(QMainWindow):
                 self.task_status_input.setCurrentIndex(0)
                 self.update_data()
             except Exception as e:
-                print(f"Ошибка при добавлении задачи: {e}")
+                QMessageBox.critical(self, "Ошибка", f"Ошибка при добавлении задачи: {e}")
         else:
-            print("Название задачи не заполнено.")
+            QMessageBox.warning(self, "Ошибка", "Название задачи не заполнено.")
 
     def remove_task(self):
         selected_items = self.task_table.selectedItems()
