@@ -465,6 +465,7 @@ class TaskManager(QMainWindow):
             if selected_worker != 'Все работники':
                 tasks = [task for task in tasks if task[1] == selected_worker]
 
+            # Создание текста задач
             html_task_details = f"{i}<br>"
             if tasks:
                 task_details = "<br>".join([
@@ -476,21 +477,22 @@ class TaskManager(QMainWindow):
             text_browser = QTextBrowser()
             text_browser.setHtml(html_task_details)
 
+            # Определение строки и столбца в таблице
             row = (i + first_day_of_month - 1) // 7
             column = (i + first_day_of_month - 1) % 7
+
+            # Стилизация для выходных
+            if column == 5 or column == 6:
+                text_browser.setStyleSheet("background-color: lightgrey; border: 1px solid black;")
+            else:
+                text_browser.setStyleSheet("border: 1px solid black;")
+
+            # Устанавливаем текст в ячейку
             self.calendar_table.setCellWidget(row, column, text_browser)
 
-            # Change background color for Saturday and Sunday
+            # Убираем содержимое ячейки, если это выходной
             if column == 5 or column == 6:
-                text_browser.setStyleSheet("background-color: lightgrey;")
-
-            if tasks:
-                status_color = {
-                    "Выполнено": TASK_DONE,
-                    "Приостановлена": TASK_STOP,
-                    "В процессе": TASK_PROCESSING
-                }.get(tasks[0][5], "black")
-                text_browser.setTextColor(QColor(status_color))
+                text_browser.clear()  # Убираем текст задач для выходных
 
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -564,7 +566,6 @@ def backup_tasks_db(force_backup=False):
             print(f"Ошибка при создании резервной копии: {e}")
     else:
         print("Резервная копия уже существует, пропуск создания.")
-
 
 
 def is_even_day():

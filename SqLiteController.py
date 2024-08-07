@@ -42,3 +42,27 @@ def create_db():
 
 
 create_db()
+
+
+# def add_hard_day_column():
+#     # Подключение к базе данных
+#     conn = sqlite3.connect('tasks.db')
+#     cursor = conn.cursor()
+#
+#     try:
+#         # Выполнение команды ALTER TABLE для добавления колонки hard_day
+#         cursor.execute("ALTER TABLE tasks ADD COLUMN hard_day BOOLEAN DEFAULT 0;")
+#         print("Колонка hard_day успешно добавлена.")
+#     except sqlite3.OperationalError as e:
+#         # Проверка, если колонка уже существует
+#         if "duplicate column name" in str(e):
+#             print("Колонка hard_day уже существует.")
+#         else:
+#             print(f"Ошибка: {e}")
+#     finally:
+#         # Закрытие курсора и соединения с базой данных
+#         cursor.close()
+#         conn.close()
+#
+#
+# add_hard_day_column()
