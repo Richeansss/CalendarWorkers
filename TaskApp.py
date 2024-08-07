@@ -566,7 +566,6 @@ def backup_tasks_db(force_backup=False):
         print("Резервная копия уже существует, пропуск создания.")
 
 
-
 def is_even_day():
     day = datetime.now().day
     return day
