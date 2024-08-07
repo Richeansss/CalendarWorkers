@@ -54,14 +54,17 @@ class TaskManager(QMainWindow):
         self.worker_tab = QWidget()
         self.task_tab = QWidget()
         self.calendar_tab = QWidget()
+        self.setting_tab = QWidget()
 
         self.tabs.addTab(self.worker_tab, 'Работники')
         self.tabs.addTab(self.task_tab, 'Задачи')
         self.tabs.addTab(self.calendar_tab, 'Календарь')
+        self.tabs.addTab(self.setting_tab, 'Настройки')
 
         self.setup_worker_tab()
         self.setup_task_tab()
         self.setup_calendar_tab()
+        self.setup_setting_tab()
 
         # Connect tab change signal to data update method
         self.tabs.currentChanged.connect(self.update_data)
@@ -138,6 +141,20 @@ class TaskManager(QMainWindow):
 
         # Load initial worker data
         self.add_initial_worker_combobox()
+
+    def setup_setting_tab(self):
+        self.task_layout = QVBoxLayout()
+
+        self.force_backup_button = QPushButton("Принудительно создать резервную копию", self.setting_tab)
+        self.force_backup_button.clicked.connect(self.force_backup)
+
+        self.task_layout.addWidget(self.force_backup_button)
+        self.setting_tab.setLayout(self.task_layout)
+
+        self.setGeometry(300, 300, 800, 600)
+
+    def force_backup(self):
+        backup_tasks_db(force_backup=True)
 
     def add_worker_combobox(self):
         workers = self.load_workers()
@@ -527,7 +544,7 @@ def get_status_color_dot(status):
     return f'<span style="color:{color};">&#9679;</span>'
 
 
-def backup_tasks_db():
+def backup_tasks_db(force_backup=False):
     db_path = 'tasks.db'
 
     # Определите формат для папки резервных копий
@@ -539,14 +556,15 @@ def backup_tasks_db():
     backup_path = os.path.join(backup_folder, f'tasks_backup_{datetime.now().strftime("%H%M%S")}.db')
 
     # Проверьте, существует ли уже резервная копия
-    if not any(fname.startswith('tasks_backup_') for fname in os.listdir(backup_folder)):
+    if not any(fname.startswith('tasks_backup') for fname in os.listdir(backup_folder)) or force_backup:
         try:
             shutil.copy(db_path, backup_path)
-            print(f'Резервная копия создана: {backup_path}')
+            print(f"Резервная копия создана: {backup_path}")
         except Exception as e:
-            print(f'Ошибка при создании резервной копии: {e}')
+            print(f"Ошибка при создании резервной копии: {e}")
     else:
-        print("Резервная копия для сегодня уже существует.")
+        print("Резервная копия уже существует, пропуск создания.")
+
 
 
 def is_even_day():
