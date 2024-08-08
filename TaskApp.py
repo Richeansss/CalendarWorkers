@@ -469,7 +469,7 @@ class TaskManager(QMainWindow):
             html_task_details = f"{i}<br>"
             if tasks:
                 task_details = "<br>".join([
-                    f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
+                    f"{get_status_color_dot(task[5])} {task[1]}: {task[2]}"
                     for task in tasks
                 ])
                 html_task_details += task_details
@@ -491,7 +491,7 @@ class TaskManager(QMainWindow):
                 html_task_details = f'<span style="color: Tomato; font-weight:bold; font-size:18px;">{i}</span><br>'
                 if tasks:
                     task_details = "<br>".join([
-                        f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
+                        f"{get_status_color_dot(task[5])} {task[1]}: {task[2]}"
                         for task in tasks
                     ])
                     html_task_details += task_details
@@ -501,6 +501,25 @@ class TaskManager(QMainWindow):
 
             if column == 5 or column == 6:
                 text_browser.clear()
+        # Легенда
+        legend_html = """
+        <div style="font-size: 14px; margin-top: 10px;">
+            <b>Легенда:</b><br>
+            <span style="color: green;">&#9679;</span> Выполнено<br>
+            <span style="color: red;">&#9679;</span> Приостановлена<br>
+            <span style="color: blue;">&#9679;</span> В процессе
+        </div>
+        """
+
+        # Создание текстового браузера для легенды
+        legend_browser = QTextBrowser()
+        legend_browser.setHtml(legend_html)
+        legend_browser.setStyleSheet("border: none;")
+
+        # Добавление легенды в последнюю строку календаря
+        legend_row = self.calendar_table.rowCount() - 1
+        self.calendar_table.setCellWidget(legend_row, 0, legend_browser)
+        self.calendar_table.setSpan(legend_row, 0, 1, 7)  # Протянуть на всю ширину таблицы
 
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
