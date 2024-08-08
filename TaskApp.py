@@ -504,7 +504,7 @@ class TaskManager(QMainWindow):
         # Легенда
         legend_html = """
         <div style="font-size: 14px; margin-top: 10px;">
-            <b>Легенда:</b><br>
+            <b>Статус задачи:</b><br>
             <span style="color: green;">&#9679;</span> Выполнено<br>
             <span style="color: red;">&#9679;</span> Приостановлена<br>
             <span style="color: blue;">&#9679;</span> В процессе
