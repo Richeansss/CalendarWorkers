@@ -406,6 +406,7 @@ class TaskManager(QMainWindow):
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(5)  # Убираем колонку ID
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
+            self.task_table.setSortingEnabled(True)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
