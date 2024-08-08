@@ -101,6 +101,9 @@ class TaskManager(QMainWindow):
         self.task_table = QTableWidget()
         self.task_layout.addWidget(self.task_table)
 
+        # Растяжение ячейки - не работает :(
+        self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+
         self.task_form = QFormLayout()
 
         self.task_worker_layout = QHBoxLayout()  # Новый layout для комбобоксов работников
@@ -403,7 +406,6 @@ class TaskManager(QMainWindow):
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(5)  # Убираем колонку ID
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
-            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
@@ -430,7 +432,6 @@ class TaskManager(QMainWindow):
                         self.task_table.setItem(row_index, col_index - 1, item)
 
             self.task_table.resizeColumnsToContents()
-            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
 
@@ -452,7 +453,7 @@ class TaskManager(QMainWindow):
     def show_month(self, year, month):
         self.current_date = QDate(year, month, 1)
         days_in_month = self.current_date.daysInMonth()
-        first_day_of_month = self.current_date.dayOfWeek() - 1  # Monday = 0, Sunday = 6
+        first_day_of_month = self.current_date.dayOfWeek() - 1
         self.calendar_table.clearContents()
 
         self.month_year_label.setText(self.current_date.toString('MMMM yyyy'))
@@ -465,34 +466,37 @@ class TaskManager(QMainWindow):
             if selected_worker != 'Все работники':
                 tasks = [task for task in tasks if task[1] == selected_worker]
 
-            # Создание текста задач
             html_task_details = f"{i}<br>"
             if tasks:
                 task_details = "<br>".join([
                     f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
-                    for task in tasks
+                for task in tasks
                 ])
                 html_task_details += task_details
 
             text_browser = QTextBrowser()
             text_browser.setHtml(html_task_details)
 
-            # Определение строки и столбца в таблице
             row = (i + first_day_of_month - 1) // 7
             column = (i + first_day_of_month - 1) % 7
 
-            # Стилизация для выходных
             if column == 5 or column == 6:
                 text_browser.setStyleSheet("background-color: lightgrey; border: 1px solid black;")
             else:
                 text_browser.setStyleSheet("border: 1px solid black;")
 
-            # Устанавливаем текст в ячейку
-            self.calendar_table.setCellWidget(row, column, text_browser)
+            # Check if it's today's date and apply special formatting
+            if day_date == QDate.currentDate():
+                html_task_details = f'<span style="color: Tomato; font-weight:bold; font-size:18px;">{i}</span><br>'
+                if tasks:
+                    task_details = "<br>".join([
+                        f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
+                    for task in tasks
+                    ])
+                    html_task_details += task_details
+                text_browser.setHtml(html_task_details)
 
-            # Убираем содержимое ячейки, если это выходной
-            if column == 5 or column == 6:
-                text_browser.clear()  # Убираем текст задач для выходных
+            self.calendar_table.setCellWidget(row, column, text_browser)
 
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
