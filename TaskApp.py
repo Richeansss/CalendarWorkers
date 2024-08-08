@@ -117,15 +117,32 @@ class TaskManager(QMainWindow):
 
     def setup_task_tab(self):
         self.task_layout = QVBoxLayout()
+
+        # Новый layout для комбобоксов
+        self.task_filter_layout = QHBoxLayout()
+
+        self.worker_combobox = QComboBox()
+        self.worker_combobox.addItem('Все работники')
+        self.worker_combobox.currentIndexChanged.connect(self.filter_tasks)
+
+        self.task_combobox = QComboBox()
+        self.task_combobox.addItem('Все задачи')
+        self.task_combobox.currentIndexChanged.connect(self.filter_tasks)
+
+        self.task_filter_layout.addWidget(QLabel('Фильтр по работнику:'))
+        self.task_filter_layout.addWidget(self.worker_combobox)
+        self.task_filter_layout.addWidget(QLabel('Фильтр по работнику задачи:'))
+        self.task_filter_layout.addWidget(self.task_combobox)
+
+        # Добавляем layout для фильтров до таблицы
+        self.task_layout.addLayout(self.task_filter_layout)
+
+        # Таблица задач
         self.task_table = QTableWidget()
         self.task_layout.addWidget(self.task_table)
 
-        # Растяжение ячейки - не работает :(
-        self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-
         self.task_form = QFormLayout()
-
-        self.task_worker_layout = QHBoxLayout()  # Новый layout для комбобоксов работников
+        self.task_worker_layout = QHBoxLayout()
         self.add_worker_button = QPushButton('Добавить работника')
         self.remove_worker_button = QPushButton('Удалить работников')
         self.task_worker_layout.addWidget(self.add_worker_button)
@@ -136,7 +153,7 @@ class TaskManager(QMainWindow):
         self.task_end_input = QDateEdit()
         self.task_status_input = QComboBox()
 
-        self.initialize_task_form()  # Инициализация виджетов
+        self.initialize_task_form()
 
         self.task_buttons_layout = QVBoxLayout()
         self.add_task_button = QPushButton('Добавить задачу')
@@ -163,6 +180,45 @@ class TaskManager(QMainWindow):
 
         # Load initial worker data
         self.add_initial_worker_combobox()
+        self.load_workers_into_combobox()
+        self.load_tasks_into_combobox()
+        self.load_tasks()
+
+
+    def filter_tasks(self):
+            worker = self.worker_combobox.currentText()
+            task = self.task_combobox.currentText()
+
+            self.load_tasks(worker=worker, task=task)
+
+    def load_workers_into_combobox(self):
+        workers = self.load_workers()
+        self.worker_combobox.clear()
+        self.worker_combobox.addItem('Все работники')
+        self.worker_combobox.addItems([w[1] for w in workers])
+        self.worker_combobox.setMaximumWidth(400)
+
+    def load_tasks_into_combobox(self):
+        tasks = self.load_tasks_for_load_tasks_into_combobox()
+        self.task_combobox.clear()
+        self.task_combobox.addItem('Все задачи')
+        self.task_combobox.addItems([t[1] for t in tasks])
+        self.task_combobox.setMaximumWidth(400)  # Пример ограничения ширины
+
+
+    def load_tasks_for_load_tasks_into_combobox(self):
+        # Открываем соединение с базой данных
+        connection = sqlite3.connect('tasks.db')
+        cursor = connection.cursor()
+
+        # Выполняем запрос для получения всех задач
+        cursor.execute('SELECT id, title FROM tasks')
+        tasks = cursor.fetchall()
+
+        # Закрываем соединение
+        connection.close()
+
+        return tasks
 
     def setup_setting_tab(self):
         self.task_layout = QVBoxLayout()
@@ -408,37 +464,49 @@ class TaskManager(QMainWindow):
             print(f"Ошибка при загрузки таблицы Работники: {e}")
             return []
 
-    def load_tasks(self):
+    def load_tasks(self, worker=None, task=None):
         try:
             conn = sqlite3.connect('tasks.db')
             cursor = conn.cursor()
-            cursor.execute('''
-                SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
-                FROM tasks
-                JOIN task_workers ON tasks.id = task_workers.task_id
-                JOIN workers ON task_workers.worker_id = workers.id
-            ''')
+
+            query = '''
+            SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
+            FROM tasks
+            JOIN task_workers ON tasks.id = task_workers.task_id
+            JOIN workers ON task_workers.worker_id = workers.id
+            WHERE 1=1
+        '''
+            params = []
+
+            if worker and worker != 'Все работники':
+                query += ' AND workers.name = ?'
+                params.append(worker)
+
+            if task and task != 'Все задачи':
+                query += ' AND tasks.title = ?'
+                params.append(task)
+
+            cursor.execute(query, params)
             tasks = cursor.fetchall()
             conn.close()
 
             self.task_table.clearContents()
             self.task_table.setRowCount(len(tasks))
-            self.task_table.setColumnCount(5)  # Убираем колонку ID
+            self.task_table.setColumnCount(5)
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
-            # self.task_table.setSortingEnabled(True)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
             for row_index, task in enumerate(tasks):
-                for col_index in range(1, 6):  # Пропускаем колонку ID
+                for col_index in range(1, 6):
                     data = task[col_index]
-                    if col_index == 3 or col_index == 4:  # Даты
-                        if isinstance(data, str):  # Если дата представлена в виде строки
+                    if col_index == 3 or col_index == 4:
+                        if isinstance(data, str):
                             try:
                                 data = datetime.strptime(data, '%Y-%m-%d').strftime('%d.%m.%Y')
                             except ValueError:
-                                data = 'Invalid Date'  # Если формат даты некорректный
-                    if col_index == 5:  # Столбец статуса
+                                data = 'Invalid Date'
+                    if col_index == 5:
                         combo_box = QComboBox()
                         combo_box.addItems(status_items)
                         combo_box.setCurrentText(data)
@@ -447,14 +515,13 @@ class TaskManager(QMainWindow):
                         self.task_table.setCellWidget(row_index, col_index - 1, combo_box)
                     else:
                         item = QTableWidgetItem(str(data))
-                        if col_index == 1:  # Связываем скрытый ID с первой видимой колонкой (Работник)
+                        if col_index == 1:
                             item.setData(Qt.UserRole, task[0])
                         self.task_table.setItem(row_index, col_index - 1, item)
 
             self.task_table.resizeColumnsToContents()
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
-
     def showEvent(self, event):
         super().showEvent(event)
         self.task_table.resizeColumnsToContents()
