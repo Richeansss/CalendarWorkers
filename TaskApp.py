@@ -7,7 +7,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QListWidget,
     QFormLayout, QLineEdit, QLabel, QTabWidget, QComboBox, QDateEdit, QTextBrowser, QHeaderView, QHBoxLayout,
-    QTableWidgetItem, QTableWidget, QMessageBox, QSpacerItem, QSizePolicy
+    QTableWidgetItem, QTableWidget, QMessageBox
 )
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QIcon, QGuiApplication
@@ -219,35 +219,29 @@ class TaskManager(QMainWindow):
         self.task_combobox.addItems([t[1] for t in tasks])
         self.task_combobox.setMaximumWidth(400)  # Пример ограничения ширины
 
-
     def load_statuses(self):
+        query = 'SELECT DISTINCT status FROM tasks'
+        statuses = self.execute_query(query)
+        return [row[0] for row in statuses]
+
+    def load_tasks_for_load_tasks_into_combobox(self):
+        query = 'SELECT id, title FROM tasks'
+        tasks = self.execute_query(query)
+        return tasks
+
+    def execute_query(self, query, params=(), fetchall=True):
         try:
             conn = sqlite3.connect('tasks.db')
             cursor = conn.cursor()
-
-            query = 'SELECT DISTINCT status FROM tasks'
-            cursor.execute(query)
-            statuses = [row[0] for row in cursor.fetchall()]
-            conn.close()
-
-            return statuses
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке статусов: {e}")
+            cursor.execute(query, params)
+            result = cursor.fetchall() if fetchall else cursor.fetchone()
+            conn.commit()
+            return result
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при выполнении запроса: {e}")
             return []
-
-    def load_tasks_for_load_tasks_into_combobox(self):
-        # Открываем соединение с базой данных
-        connection = sqlite3.connect('tasks.db')
-        cursor = connection.cursor()
-
-        # Выполняем запрос для получения всех задач
-        cursor.execute('SELECT id, title FROM tasks')
-        tasks = cursor.fetchall()
-
-        # Закрываем соединение
-        connection.close()
-
-        return tasks
+        finally:
+            conn.close()
 
     def setup_setting_tab(self):
         self.task_layout = QVBoxLayout()
