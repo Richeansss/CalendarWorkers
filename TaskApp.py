@@ -7,7 +7,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QListWidget,
     QFormLayout, QLineEdit, QLabel, QTabWidget, QComboBox, QDateEdit, QTextBrowser, QHeaderView, QHBoxLayout,
-    QTableWidgetItem, QTableWidget, QMessageBox
+    QTableWidgetItem, QTableWidget, QMessageBox, QSpacerItem, QSizePolicy
 )
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QIcon, QGuiApplication
@@ -308,12 +308,10 @@ class TaskManager(QMainWindow):
 
         self.worker_filter_layout.addWidget(self.worker_filter_label)
         self.worker_filter_layout.addWidget(self.worker_filter_combobox)
-
         self.calendar_layout.addLayout(self.worker_filter_layout)
 
         # Navigation Layout
         self.nav_layout = QHBoxLayout()
-
         self.prev_month_button = QPushButton('<< Предыдущий месяц')
         self.next_month_button = QPushButton('Следующий месяц >>')
 
@@ -331,7 +329,6 @@ class TaskManager(QMainWindow):
         self.nav_layout.addWidget(self.prev_month_button)
         self.nav_layout.addWidget(self.month_year_label)
         self.nav_layout.addWidget(self.next_month_button)
-
         self.calendar_layout.addLayout(self.nav_layout)
 
         # Calendar Table
@@ -341,7 +338,20 @@ class TaskManager(QMainWindow):
         self.calendar_table.verticalHeader().setVisible(False)
         self.calendar_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.calendar_table.setSelectionMode(QTableWidget.NoSelection)
-        self.calendar_layout.addWidget(self.calendar_table)
+
+        # Create a widget to hold the calendar table and set stretch policy
+        self.calendar_table_widget = QWidget()
+        self.calendar_table_layout = QVBoxLayout(self.calendar_table_widget)
+        self.calendar_table_layout.addWidget(self.calendar_table)
+        self.calendar_table_layout.setStretch(0, 1)  # Ensure the table takes up remaining space
+
+        self.calendar_layout.addWidget(self.calendar_table_widget)
+
+        # Legend
+        self.legend_label = QLabel()
+        self.legend_label.setStyleSheet("border: none; padding: 5px; background-color: #f9f9f9;")
+        self.legend_label.setFixedHeight(60)  # Fixed height for the legend
+        self.calendar_layout.addWidget(self.legend_label)
 
         self.prev_month_button.clicked.connect(self.show_prev_month)
         self.next_month_button.clicked.connect(self.show_next_month)
@@ -353,6 +363,9 @@ class TaskManager(QMainWindow):
 
         # Load initial worker data into combobox
         self.load_worker_filter()
+
+        # Update legend
+        self.update_legend()
 
     def load_worker_filter(self):
         workers = self.load_workers()
@@ -575,11 +588,21 @@ class TaskManager(QMainWindow):
         self.current_date = QDate(year, month, 1)
         days_in_month = self.current_date.daysInMonth()
         first_day_of_month = self.current_date.dayOfWeek() - 1
+
+        # Определите количество строк, необходимых для отображения дней месяца
+        num_rows = (days_in_month + first_day_of_month + 6) // 7
+
+        # Обновите количество строк в таблице
+        self.calendar_table.setRowCount(num_rows)  # Не добавляем строку для легенды
+
+        # Очистите таблицу
         self.calendar_table.clearContents()
 
+        # Обновляем заголовок месяца и года
         self.month_year_label.setText(self.current_date.toString('MMMM yyyy'))
 
         selected_worker = self.worker_filter_combobox.currentText()
+
         for i in range(1, days_in_month + 1):
             day_date = QDate(year, month, i)
             tasks = self.get_tasks_for_date(day_date.toString('yyyy-MM-dd'))
@@ -587,64 +610,54 @@ class TaskManager(QMainWindow):
             if selected_worker != 'Все работники':
                 tasks = [task for task in tasks if task[1] == selected_worker]
 
-            html_task_details = f"{i}<br>"
+            # Создаем HTML контент для даты
+            html_task_details = f"<div style='font-size: 16px; font-weight: bold; color: #333;'>{i}</div>"
             if tasks:
                 task_details = "<br>".join([
-                    f"{get_status_color_dot(task[5])} {task[1]}: {task[2]}"
+                    f"{get_status_color_dot(task[5])} <b>{task[1]}</b>: {task[2]}"
                     for task in tasks
                 ])
-                html_task_details += task_details
+                html_task_details += f"<div style='margin-top: 5px;'>{task_details}</div>"
 
+            # Создаем QTextBrowser для отображения задач
             text_browser = QTextBrowser()
             text_browser.setHtml(html_task_details)
 
+            # Форматируем выходные и сегодняшний день
+            column = (i + first_day_of_month - 1) % 7
+            if column in [5, 6]:  # СБ и ВС
+                text_browser.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc;")
+                # Удаляем задачи в выходные, но показываем число
+                text_browser.setHtml(f"<div style='font-size: 16px; font-weight: bold; color: #333;'>{i}</div>")
+            elif day_date == QDate.currentDate():
+                text_browser.setStyleSheet("background-color: #e3f2fd; border: 1px solid #90caf9;")  # Нежно-голубой цвет
+            else:
+                text_browser.setStyleSheet("border: 1px solid #ccc;")
+
+            # Устанавливаем виджет в ячейку таблицы
             row = (i + first_day_of_month - 1) // 7
             column = (i + first_day_of_month - 1) % 7
-
-            # Устанавливаем форматирование для выходных
-            if column == 5 or column == 6:  # СБ и ВС
-                text_browser.setStyleSheet("background-color: lightgrey; border: 1px solid black;")
-            else:
-                text_browser.setStyleSheet("border: 1px solid black;")
-
-            # Проверяем, если это сегодняшний день и применяем специальное форматирование
-            if day_date == QDate.currentDate():
-                html_task_details = f'<span style="color: Tomato; font-weight:bold; font-size:18px;">{i}</span><br>'
-                if tasks:
-                    task_details = "<br>".join([
-                        f"{get_status_color_dot(task[5])} {task[1]}: {task[2]}"
-                        for task in tasks
-                    ])
-                    html_task_details += task_details
-                text_browser.setHtml(html_task_details)
-
             self.calendar_table.setCellWidget(row, column, text_browser)
 
-            if column == 5 or column == 6:
-                text_browser.clear()
-        # Легенда
-        legend_html = """
-        <div style="font-size: 14px; margin-top: 10px;">
-            <b>Статус задачи:</b><br>
-            <span style="color: green;">&#9679;</span> Выполнено<br>
-            <span style="color: red;">&#9679;</span> Приостановлена<br>
-            <span style="color: blue;">&#9679;</span> В процессе
-        </div>
-        """
-
-        # Создание текстового браузера для легенды
-        legend_browser = QTextBrowser()
-        legend_browser.setHtml(legend_html)
-        legend_browser.setStyleSheet("border: none;")
-
-        # Добавление легенды в последнюю строку календаря
-        legend_row = self.calendar_table.rowCount() - 1
-        self.calendar_table.setCellWidget(legend_row, 0, legend_browser)
-        self.calendar_table.setSpan(legend_row, 0, 1, 7)  # Протянуть на всю ширину таблицы
-
+        # Настроим размеры заголовков таблицы
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.resizeRowsToContents()
+
+        # Обновляем легенду под таблицей
+        self.update_legend()
+
+    def update_legend(self):
+        # Update legend text
+        legend_text = """
+        <div style="font-size: 16px; margin-top: 2px; color: #555;">
+            <b>Статус задачи:</b><br>
+            <span style="color: green;">&#9679;</span> Выполнено
+            <span style="color: red;">&#9679;</span> Приостановлена 
+            <span style="color: blue;">&#9679;</span> В процессе
+        </div>
+        """
+        self.legend_label.setText(legend_text)
 
     def get_tasks_for_date(self, date_str):
         try:
