@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem, QTableWidget, QMessageBox
 )
 from PyQt5.QtCore import QDate, Qt
-from PyQt5.QtGui import QPixmap, QPainter, QColor, QIcon
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QIcon, QGuiApplication
 
 TASK_DONE = "green"
 TASK_PROCESSING = "blue"
@@ -21,7 +21,27 @@ class TaskManager(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Менеджер задач')
-        self.setGeometry(100, 100, 1000, 800)
+
+        screen = QGuiApplication.primaryScreen()
+        screen_rect = screen.availableGeometry()
+        screen_width = screen_rect.width()
+        screen_height = screen_rect.height()
+
+        # Определение процентов для окна
+        width_percent = 0.8
+        height_percent = 0.8
+        x_percent = 0.1
+        y_percent = 0.1
+
+        # Вычисление размеров и позиции окна
+        window_width = int(screen_width * width_percent)
+        window_height = int(screen_height * height_percent)
+        x_position = int(screen_width * x_percent)
+        y_position = int(screen_height * y_percent)
+
+        # Установка размеров и позиции окна
+        self.setGeometry(x_position, y_position, window_width, window_height)
+        print(window_width, window_height)
 
         self.setWindowIcon(QIcon('gaz.ico'))
 
@@ -154,7 +174,7 @@ class TaskManager(QMainWindow):
         self.task_layout.addWidget(self.force_backup_button)
         self.setting_tab.setLayout(self.task_layout)
 
-        self.setGeometry(300, 300, 800, 600)
+        # self.setGeometry(300, 300, 800, 600)
 
     def force_backup(self):
         backup_tasks_db(force_backup=True)
@@ -406,6 +426,7 @@ class TaskManager(QMainWindow):
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(5)  # Убираем колонку ID
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
+            self.task_table.setSortingEnabled(True)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
