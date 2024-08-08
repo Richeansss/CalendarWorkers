@@ -102,7 +102,7 @@ class TaskManager(QMainWindow):
         self.task_layout.addWidget(self.task_table)
 
         # Растяжение ячейки - не работает :(
-        # self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
         self.task_form = QFormLayout()
 
@@ -406,7 +406,6 @@ class TaskManager(QMainWindow):
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(5)  # Убираем колонку ID
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
-            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
@@ -433,7 +432,6 @@ class TaskManager(QMainWindow):
                         self.task_table.setItem(row_index, col_index - 1, item)
 
             self.task_table.resizeColumnsToContents()
-            self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
 
