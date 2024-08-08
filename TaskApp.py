@@ -470,7 +470,7 @@ class TaskManager(QMainWindow):
             if tasks:
                 task_details = "<br>".join([
                     f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
-                for task in tasks
+                    for task in tasks
                 ])
                 html_task_details += task_details
 
@@ -480,23 +480,27 @@ class TaskManager(QMainWindow):
             row = (i + first_day_of_month - 1) // 7
             column = (i + first_day_of_month - 1) % 7
 
-            if column == 5 or column == 6:
+            # Устанавливаем форматирование для выходных
+            if column == 5 or column == 6:  # СБ и ВС
                 text_browser.setStyleSheet("background-color: lightgrey; border: 1px solid black;")
             else:
                 text_browser.setStyleSheet("border: 1px solid black;")
 
-            # Check if it's today's date and apply special formatting
+            # Проверяем, если это сегодняшний день и применяем специальное форматирование
             if day_date == QDate.currentDate():
                 html_task_details = f'<span style="color: Tomato; font-weight:bold; font-size:18px;">{i}</span><br>'
                 if tasks:
                     task_details = "<br>".join([
                         f"{get_status_color_dot(task[5])} {task[1]}: {task[2]} ({task[5]})"
-                    for task in tasks
+                        for task in tasks
                     ])
                     html_task_details += task_details
                 text_browser.setHtml(html_task_details)
 
             self.calendar_table.setCellWidget(row, column, text_browser)
+
+            if column == 5 or column == 6:
+                text_browser.clear()
 
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
