@@ -129,10 +129,16 @@ class TaskManager(QMainWindow):
         self.task_combobox.addItem('Все задачи')
         self.task_combobox.currentIndexChanged.connect(self.filter_tasks)
 
+        self.status_combobox = QComboBox()
+        self.status_combobox.addItem('Все статусы')
+        self.status_combobox.currentIndexChanged.connect(self.filter_tasks)
+
         self.task_filter_layout.addWidget(QLabel('Фильтр по работнику:'))
         self.task_filter_layout.addWidget(self.worker_combobox)
-        self.task_filter_layout.addWidget(QLabel('Фильтр по работнику задачи:'))
+        self.task_filter_layout.addWidget(QLabel('Фильтр по задаче:'))
         self.task_filter_layout.addWidget(self.task_combobox)
+        self.task_filter_layout.addWidget(QLabel('Фильтр по статусу:'))
+        self.task_filter_layout.addWidget(self.status_combobox)
 
         # Добавляем layout для фильтров до таблицы
         self.task_layout.addLayout(self.task_filter_layout)
@@ -182,14 +188,22 @@ class TaskManager(QMainWindow):
         self.add_initial_worker_combobox()
         self.load_workers_into_combobox()
         self.load_tasks_into_combobox()
+        self.load_statuses_into_combobox()
         self.load_tasks()
 
-
     def filter_tasks(self):
-            worker = self.worker_combobox.currentText()
-            task = self.task_combobox.currentText()
+        worker = self.worker_combobox.currentText()
+        task = self.task_combobox.currentText()
+        status = self.status_combobox.currentText()
 
-            self.load_tasks(worker=worker, task=task)
+        self.load_tasks(worker=worker, task=task, status=status)
+
+    def load_statuses_into_combobox(self):
+        statuses = self.load_statuses()
+        self.status_combobox.clear()
+        self.status_combobox.addItem('Все статусы')
+        self.status_combobox.addItems(statuses)
+        self.status_combobox.setMaximumWidth(400)
 
     def load_workers_into_combobox(self):
         workers = self.load_workers()
@@ -205,6 +219,21 @@ class TaskManager(QMainWindow):
         self.task_combobox.addItems([t[1] for t in tasks])
         self.task_combobox.setMaximumWidth(400)  # Пример ограничения ширины
 
+
+    def load_statuses(self):
+        try:
+            conn = sqlite3.connect('tasks.db')
+            cursor = conn.cursor()
+
+            query = 'SELECT DISTINCT status FROM tasks'
+            cursor.execute(query)
+            statuses = [row[0] for row in cursor.fetchall()]
+            conn.close()
+
+            return statuses
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке статусов: {e}")
+            return []
 
     def load_tasks_for_load_tasks_into_combobox(self):
         # Открываем соединение с базой данных
@@ -464,17 +493,17 @@ class TaskManager(QMainWindow):
             print(f"Ошибка при загрузки таблицы Работники: {e}")
             return []
 
-    def load_tasks(self, worker=None, task=None):
+    def load_tasks(self, worker=None, task=None, status=None):
         try:
             conn = sqlite3.connect('tasks.db')
             cursor = conn.cursor()
 
             query = '''
-            SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
-            FROM tasks
-            JOIN task_workers ON tasks.id = task_workers.task_id
-            JOIN workers ON task_workers.worker_id = workers.id
-            WHERE 1=1
+        SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
+        FROM tasks
+        JOIN task_workers ON tasks.id = task_workers.task_id
+        JOIN workers ON task_workers.worker_id = workers.id
+        WHERE 1=1
         '''
             params = []
 
@@ -485,6 +514,10 @@ class TaskManager(QMainWindow):
             if task and task != 'Все задачи':
                 query += ' AND tasks.title = ?'
                 params.append(task)
+
+            if status and status != 'Все статусы':
+                query += ' AND tasks.status = ?'
+                params.append(status)
 
             cursor.execute(query, params)
             tasks = cursor.fetchall()
@@ -516,12 +549,13 @@ class TaskManager(QMainWindow):
                     else:
                         item = QTableWidgetItem(str(data))
                         if col_index == 1:
-                            item.setData(Qt.UserRole, task[0])
+                            item.setData(Qt.UserRole, task[0])  # Сохраняем ID задачи
                         self.task_table.setItem(row_index, col_index - 1, item)
 
             self.task_table.resizeColumnsToContents()
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка при загрузке задач: {e}")
+
     def showEvent(self, event):
         super().showEvent(event)
         self.task_table.resizeColumnsToContents()
