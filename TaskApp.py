@@ -41,7 +41,6 @@ class TaskManager(QMainWindow):
 
         # Установка размеров и позиции окна
         self.setGeometry(x_position, y_position, window_width, window_height)
-        print(window_width, window_height)
 
         self.setWindowIcon(QIcon('gaz.ico'))
 
@@ -426,7 +425,7 @@ class TaskManager(QMainWindow):
             self.task_table.setRowCount(len(tasks))
             self.task_table.setColumnCount(5)  # Убираем колонку ID
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
-            self.task_table.setSortingEnabled(True)
+            # self.task_table.setSortingEnabled(True)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
