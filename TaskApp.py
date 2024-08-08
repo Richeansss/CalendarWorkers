@@ -4,7 +4,6 @@ import shutil
 import os
 from datetime import datetime
 
-from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QListWidget,
     QFormLayout, QLineEdit, QLabel, QTabWidget, QComboBox, QDateEdit, QTextBrowser, QHeaderView, QHBoxLayout,
@@ -240,11 +239,6 @@ class TaskManager(QMainWindow):
         self.calendar_table.setSelectionMode(QTableWidget.NoSelection)
         self.calendar_layout.addWidget(self.calendar_table)
 
-        # Print Button
-        self.print_button = QPushButton('Печать')
-        self.calendar_layout.addWidget(self.print_button)
-        self.print_button.clicked.connect(self.print_calendar)
-
         self.prev_month_button.clicked.connect(self.show_prev_month)
         self.next_month_button.clicked.connect(self.show_next_month)
 
@@ -255,18 +249,6 @@ class TaskManager(QMainWindow):
 
         # Load initial worker data into combobox
         self.load_worker_filter()
-
-    def print_calendar(self):
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setPageSize(QPrinter.A4)
-        printer.setOrientation(QPrinter.Landscape)
-        printer.setFullPage(True)
-
-        print_dialog = QPrintDialog(printer, self)
-        if print_dialog.exec_() == QPrintDialog.Accepted:
-            painter = QPainter(printer)
-            self.calendar_table.render(painter)
-            painter.end()
 
     def load_worker_filter(self):
         workers = self.load_workers()
