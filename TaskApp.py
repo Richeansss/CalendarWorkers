@@ -114,15 +114,38 @@ class TaskManager(QMainWindow):
 
     def setup_task_tab(self):
         self.task_layout = QVBoxLayout()
+
+        # Новый layout для комбобоксов
+        self.task_filter_layout = QHBoxLayout()
+
+        self.worker_combobox = QComboBox()
+        self.worker_combobox.addItem('Все работники')
+        self.worker_combobox.currentIndexChanged.connect(self.filter_tasks)
+
+        self.task_combobox = QComboBox()
+        self.task_combobox.addItem('Все задачи')
+        self.task_combobox.currentIndexChanged.connect(self.filter_tasks)
+
+        self.status_combobox = QComboBox()
+        self.status_combobox.addItem('Все статусы')
+        self.status_combobox.currentIndexChanged.connect(self.filter_tasks)
+
+        self.task_filter_layout.addWidget(QLabel('Фильтр по работнику:'))
+        self.task_filter_layout.addWidget(self.worker_combobox)
+        self.task_filter_layout.addWidget(QLabel('Фильтр по задаче:'))
+        self.task_filter_layout.addWidget(self.task_combobox)
+        self.task_filter_layout.addWidget(QLabel('Фильтр по статусу:'))
+        self.task_filter_layout.addWidget(self.status_combobox)
+
+        # Добавляем layout для фильтров до таблицы
+        self.task_layout.addLayout(self.task_filter_layout)
+
+        # Таблица задач
         self.task_table = QTableWidget()
         self.task_layout.addWidget(self.task_table)
 
-        # Растяжение ячейки - не работает :(
-        self.task_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-
         self.task_form = QFormLayout()
-
-        self.task_worker_layout = QHBoxLayout()  # Новый layout для комбобоксов работников
+        self.task_worker_layout = QHBoxLayout()
         self.add_worker_button = QPushButton('Добавить работника')
         self.remove_worker_button = QPushButton('Удалить работников')
         self.task_worker_layout.addWidget(self.add_worker_button)
@@ -160,6 +183,62 @@ class TaskManager(QMainWindow):
 
         # Load initial worker data
         self.add_initial_worker_combobox()
+        self.load_workers_into_combobox()
+        self.load_tasks_into_combobox()
+        self.load_statuses_into_combobox()
+        self.load_tasks()
+
+    def filter_tasks(self):
+        worker = self.worker_combobox.currentText()
+        task = self.task_combobox.currentText()
+        status = self.status_combobox.currentText()
+
+        self.load_tasks(worker=worker, task=task, status=status)
+
+    def load_statuses_into_combobox(self):
+        statuses = self.load_statuses()
+        self.status_combobox.clear()
+        self.status_combobox.addItem('Все статусы')
+        self.status_combobox.addItems(statuses)
+        self.status_combobox.setMaximumWidth(400)
+
+    def load_workers_into_combobox(self):
+        workers = self.load_workers()
+        self.worker_combobox.clear()
+        self.worker_combobox.addItem('Все работники')
+        self.worker_combobox.addItems([w[1] for w in workers])
+        self.worker_combobox.setMaximumWidth(400)
+
+    def load_tasks_into_combobox(self):
+        tasks = self.load_tasks_for_load_tasks_into_combobox()
+        self.task_combobox.clear()
+        self.task_combobox.addItem('Все задачи')
+        self.task_combobox.addItems([t[1] for t in tasks])
+        self.task_combobox.setMaximumWidth(400)  # Пример ограничения ширины
+
+    def load_statuses(self):
+        query = 'SELECT DISTINCT status FROM tasks'
+        statuses = self.execute_query(query)
+        return [row[0] for row in statuses]
+
+    def load_tasks_for_load_tasks_into_combobox(self):
+        query = 'SELECT id, title FROM tasks'
+        tasks = self.execute_query(query)
+        return tasks
+
+    def execute_query(self, query, params=(), fetchall=True):
+        try:
+            conn = sqlite3.connect('tasks.db')
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            result = cursor.fetchall() if fetchall else cursor.fetchone()
+            conn.commit()
+            return result
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при выполнении запроса: {e}")
+            return []
+        finally:
+            conn.close()
 
     def setup_setting_tab(self):
         self.task_layout = QVBoxLayout()
@@ -220,12 +299,10 @@ class TaskManager(QMainWindow):
 
         self.worker_filter_layout.addWidget(self.worker_filter_label)
         self.worker_filter_layout.addWidget(self.worker_filter_combobox)
-
         self.calendar_layout.addLayout(self.worker_filter_layout)
 
         # Navigation Layout
         self.nav_layout = QHBoxLayout()
-
         self.prev_month_button = QPushButton('<< Предыдущий месяц')
         self.next_month_button = QPushButton('Следующий месяц >>')
 
@@ -243,7 +320,6 @@ class TaskManager(QMainWindow):
         self.nav_layout.addWidget(self.prev_month_button)
         self.nav_layout.addWidget(self.month_year_label)
         self.nav_layout.addWidget(self.next_month_button)
-
         self.calendar_layout.addLayout(self.nav_layout)
 
         # Calendar Table
@@ -253,7 +329,20 @@ class TaskManager(QMainWindow):
         self.calendar_table.verticalHeader().setVisible(False)
         self.calendar_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.calendar_table.setSelectionMode(QTableWidget.NoSelection)
-        self.calendar_layout.addWidget(self.calendar_table)
+
+        # Create a widget to hold the calendar table and set stretch policy
+        self.calendar_table_widget = QWidget()
+        self.calendar_table_layout = QVBoxLayout(self.calendar_table_widget)
+        self.calendar_table_layout.addWidget(self.calendar_table)
+        self.calendar_table_layout.setStretch(0, 1)  # Ensure the table takes up remaining space
+
+        self.calendar_layout.addWidget(self.calendar_table_widget)
+
+        # Legend
+        self.legend_label = QLabel()
+        self.legend_label.setStyleSheet("border: none; padding: 5px; background-color: #f9f9f9;")
+        self.legend_label.setFixedHeight(60)  # Fixed height for the legend
+        self.calendar_layout.addWidget(self.legend_label)
 
         self.prev_month_button.clicked.connect(self.show_prev_month)
         self.next_month_button.clicked.connect(self.show_next_month)
@@ -265,6 +354,9 @@ class TaskManager(QMainWindow):
 
         # Load initial worker data into combobox
         self.load_worker_filter()
+
+        # Update legend
+        self.update_legend()
 
     def load_worker_filter(self):
         workers = self.load_workers()
@@ -405,37 +497,53 @@ class TaskManager(QMainWindow):
             print(f"Ошибка при загрузки таблицы Работники: {e}")
             return []
 
-    def load_tasks(self):
+    def load_tasks(self, worker=None, task=None, status=None):
         try:
             conn = sqlite3.connect('tasks.db')
             cursor = conn.cursor()
-            cursor.execute('''
-                SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
-                FROM tasks
-                JOIN task_workers ON tasks.id = task_workers.task_id
-                JOIN workers ON task_workers.worker_id = workers.id
-            ''')
+
+            query = '''
+        SELECT tasks.id, workers.name, tasks.title, tasks.start_date, tasks.end_date, tasks.status
+        FROM tasks
+        JOIN task_workers ON tasks.id = task_workers.task_id
+        JOIN workers ON task_workers.worker_id = workers.id
+        WHERE 1=1
+        '''
+            params = []
+
+            if worker and worker != 'Все работники':
+                query += ' AND workers.name = ?'
+                params.append(worker)
+
+            if task and task != 'Все задачи':
+                query += ' AND tasks.title = ?'
+                params.append(task)
+
+            if status and status != 'Все статусы':
+                query += ' AND tasks.status = ?'
+                params.append(status)
+
+            cursor.execute(query, params)
             tasks = cursor.fetchall()
             conn.close()
 
             self.task_table.clearContents()
             self.task_table.setRowCount(len(tasks))
-            self.task_table.setColumnCount(5)  # Убираем колонку ID
+            self.task_table.setColumnCount(5)
             self.task_table.setHorizontalHeaderLabels(['Работник', 'Задача', 'Дата начала', 'Дата конца', 'Статус'])
-            # self.task_table.setSortingEnabled(True)
 
             status_items = ['В процессе', 'Выполнено', 'Приостановлена']
 
             for row_index, task in enumerate(tasks):
-                for col_index in range(1, 6):  # Пропускаем колонку ID
+                for col_index in range(1, 6):
                     data = task[col_index]
-                    if col_index == 3 or col_index == 4:  # Даты
-                        if isinstance(data, str):  # Если дата представлена в виде строки
+                    if col_index == 3 or col_index == 4:
+                        if isinstance(data, str):
                             try:
                                 data = datetime.strptime(data, '%Y-%m-%d').strftime('%d.%m.%Y')
                             except ValueError:
-                                data = 'Invalid Date'  # Если формат даты некорректный
-                    if col_index == 5:  # Столбец статуса
+                                data = 'Invalid Date'
+                    if col_index == 5:
                         combo_box = QComboBox()
                         combo_box.addItems(status_items)
                         combo_box.setCurrentText(data)
@@ -444,8 +552,8 @@ class TaskManager(QMainWindow):
                         self.task_table.setCellWidget(row_index, col_index - 1, combo_box)
                     else:
                         item = QTableWidgetItem(str(data))
-                        if col_index == 1:  # Связываем скрытый ID с первой видимой колонкой (Работник)
-                            item.setData(Qt.UserRole, task[0])
+                        if col_index == 1:
+                            item.setData(Qt.UserRole, task[0])  # Сохраняем ID задачи
                         self.task_table.setItem(row_index, col_index - 1, item)
 
             self.task_table.resizeColumnsToContents()
@@ -471,11 +579,21 @@ class TaskManager(QMainWindow):
         self.current_date = QDate(year, month, 1)
         days_in_month = self.current_date.daysInMonth()
         first_day_of_month = self.current_date.dayOfWeek() - 1
+
+        # Определите количество строк, необходимых для отображения дней месяца
+        num_rows = (days_in_month + first_day_of_month + 6) // 7
+
+        # Обновите количество строк в таблице
+        self.calendar_table.setRowCount(num_rows)  # Не добавляем строку для легенды
+
+        # Очистите таблицу
         self.calendar_table.clearContents()
 
+        # Обновляем заголовок месяца и года
         self.month_year_label.setText(self.current_date.toString('MMMM yyyy'))
 
         selected_worker = self.worker_filter_combobox.currentText()
+
         for i in range(1, days_in_month + 1):
             day_date = QDate(year, month, i)
             tasks = self.get_tasks_for_date(day_date.toString('yyyy-MM-dd'))
@@ -483,64 +601,54 @@ class TaskManager(QMainWindow):
             if selected_worker != 'Все работники':
                 tasks = [task for task in tasks if task[1] == selected_worker]
 
-            html_task_details = f"{i}<br>"
+            # Создаем HTML контент для даты
+            html_task_details = f"<div style='font-size: 16px; font-weight: bold; color: #333;'>{i}</div>"
             if tasks:
                 task_details = "<br>".join([
-                    f"{get_status_color_dot(task[5])} {task[1]}: {task[2]}"
+                    f"{get_status_color_dot(task[5])} <b>{task[1]}</b>: {task[2]}"
                     for task in tasks
                 ])
-                html_task_details += task_details
+                html_task_details += f"<div style='margin-top: 5px;'>{task_details}</div>"
 
+            # Создаем QTextBrowser для отображения задач
             text_browser = QTextBrowser()
             text_browser.setHtml(html_task_details)
 
+            # Форматируем выходные и сегодняшний день
+            column = (i + first_day_of_month - 1) % 7
+            if column in [5, 6]:  # СБ и ВС
+                text_browser.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc;")
+                # Удаляем задачи в выходные, но показываем число
+                text_browser.setHtml(f"<div style='font-size: 16px; font-weight: bold; color: #333;'>{i}</div>")
+            elif day_date == QDate.currentDate():
+                text_browser.setStyleSheet("background-color: #e3f2fd; border: 1px solid #90caf9;")  # Нежно-голубой цвет
+            else:
+                text_browser.setStyleSheet("border: 1px solid #ccc;")
+
+            # Устанавливаем виджет в ячейку таблицы
             row = (i + first_day_of_month - 1) // 7
             column = (i + first_day_of_month - 1) % 7
-
-            # Устанавливаем форматирование для выходных
-            if column == 5 or column == 6:  # СБ и ВС
-                text_browser.setStyleSheet("background-color: lightgrey; border: 1px solid black;")
-            else:
-                text_browser.setStyleSheet("border: 1px solid black;")
-
-            # Проверяем, если это сегодняшний день и применяем специальное форматирование
-            if day_date == QDate.currentDate():
-                html_task_details = f'<span style="color: Tomato; font-weight:bold; font-size:18px;">{i}</span><br>'
-                if tasks:
-                    task_details = "<br>".join([
-                        f"{get_status_color_dot(task[5])} {task[1]}: {task[2]}"
-                        for task in tasks
-                    ])
-                    html_task_details += task_details
-                text_browser.setHtml(html_task_details)
-
             self.calendar_table.setCellWidget(row, column, text_browser)
 
-            if column == 5 or column == 6:
-                text_browser.clear()
-        # Легенда
-        legend_html = """
-        <div style="font-size: 14px; margin-top: 10px;">
-            <b>Статус задачи:</b><br>
-            <span style="color: green;">&#9679;</span> Выполнено<br>
-            <span style="color: red;">&#9679;</span> Приостановлена<br>
-            <span style="color: blue;">&#9679;</span> В процессе
-        </div>
-        """
-
-        # Создание текстового браузера для легенды
-        legend_browser = QTextBrowser()
-        legend_browser.setHtml(legend_html)
-        legend_browser.setStyleSheet("border: none;")
-
-        # Добавление легенды в последнюю строку календаря
-        legend_row = self.calendar_table.rowCount() - 1
-        self.calendar_table.setCellWidget(legend_row, 0, legend_browser)
-        self.calendar_table.setSpan(legend_row, 0, 1, 7)  # Протянуть на всю ширину таблицы
-
+        # Настроим размеры заголовков таблицы
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.resizeRowsToContents()
+
+        # Обновляем легенду под таблицей
+        self.update_legend()
+
+    def update_legend(self):
+        # Update legend text
+        legend_text = """
+        <div style="font-size: 16px; margin-top: 2px; color: #555;">
+            <b>Статус задачи:</b><br>
+            <span style="color: green;">&#9679;</span> Выполнено
+            <span style="color: red;">&#9679;</span> Приостановлена 
+            <span style="color: blue;">&#9679;</span> В процессе
+        </div>
+        """
+        self.legend_label.setText(legend_text)
 
     def get_tasks_for_date(self, date_str):
         try:
