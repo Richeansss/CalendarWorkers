@@ -27,19 +27,16 @@ class TaskManager(QMainWindow):
         screen_width = screen_rect.width()
         screen_height = screen_rect.height()
 
-        # Определение процентов для окна
         width_percent = 0.8
         height_percent = 0.8
         x_percent = 0.1
         y_percent = 0.1
 
-        # Вычисление размеров и позиции окна
         window_width = int(screen_width * width_percent)
         window_height = int(screen_height * height_percent)
         x_position = int(screen_width * x_percent)
         y_position = int(screen_height * y_percent)
 
-        # Установка размеров и позиции окна
         self.setGeometry(x_position, y_position, window_width, window_height)
 
         self.setWindowIcon(QIcon('gaz.ico'))
@@ -136,7 +133,7 @@ class TaskManager(QMainWindow):
         self.task_end_input = QDateEdit()
         self.task_status_input = QComboBox()
 
-        self.initialize_task_form()  # Инициализация виджетов
+        self.initialize_task_form()
 
         self.task_buttons_layout = QVBoxLayout()
         self.add_task_button = QPushButton('Добавить задачу')
